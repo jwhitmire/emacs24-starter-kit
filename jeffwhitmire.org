@@ -1,0 +1,12 @@
+
+* My customizations
+
+** load ruby-mode
+   #+begin_src emacs-lisp
+(starter-kit-load "ruby")
+(starter-kit-load "misc-recommended")
+(starter-kit-load "eshell")
+(starter-kit-load "lisp")
+(starter-kit-load "js")
+(starter-kit-load "yasnippet")
+   #+end_src
