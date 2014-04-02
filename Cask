@@ -1,0 +1,23 @@
+(source melpa)
+
+(depends-on "pallet")
+(depends-on "cask")
+
+(depends-on "auto-complete")
+(depends-on "ack-and-a-half")
+(depends-on "clojure-mode")
+(depends-on "dash")
+(depends-on "git-commit-mode")
+(depends-on "git-rebase-mode")
+(depends-on "htmlize")
+(depends-on "magit")
+(depends-on "multiple-cursors")
+(depends-on "paredit")
+(depends-on "redo+")
+(depends-on "smart-mode-line")
+(depends-on "smartparens")
+(depends-on "yaml-mode")
+(depends-on "yasnippet")
+
+;(depends-on "python-mode")
+;(depends-on "ipython")

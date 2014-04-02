@@ -279,27 +279,13 @@ interested in the actual code implementing the starter kit.
                 (throw 'file-found path)))))))
   #+end_src
 
-- ELPA archive repositories and two packages to install by default.
+- Configuring this to use cask/pallet instead of the esk default
+  package-initialize configuration.
   #+begin_src emacs-lisp
-        (setq package-archives
-              '(("gnu"         . "http://elpa.gnu.org/packages/")
-                ("org"         . "http://orgmode.org/elpa/")
-                ("melpa"       . "http://melpa.milkbox.net/packages/")
-                ("marmalade"   . "http://marmalade-repo.org/packages/")))
-        (package-initialize)
-        
-        (defvar starter-kit-packages nil
-          "Libraries that should be installed by default (currently none).")
-        
-        (defun starter-kit-install-if-needed (&rest packages)
-          "Install PACKAGES using ELPA if they are not loadable or installed locally."
-          (when packages
-            (unless package-archive-contents
-              (package-refresh-contents))
-            (dolist (package packages)
-              (unless (or (starter-kit-loadable-p package)
-                          (package-installed-p package))
-                (package-install package)))))
+    (require 'cask "/usr/local/Cellar/cask/0.6.0/cask.el")
+    (cask-initialize)
+    (require 'pallet)
+    
   #+end_src
 
 - Function for loading other parts of the starter kit
