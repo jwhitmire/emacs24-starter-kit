@@ -1,12 +1,154 @@
 
-* My customizations
+* Basic configurations
 
-** load ruby-mode
-   #+begin_src emacs-lisp
-(starter-kit-load "ruby")
-(starter-kit-load "misc-recommended")
-(starter-kit-load "eshell")
-(starter-kit-load "lisp")
-(starter-kit-load "js")
-(starter-kit-load "yasnippet")
-   #+end_src
+** Pull in other pieces of the starter kit
+#+BEGIN_SRC emacs-lisp
+  (starter-kit-load "ruby")
+  (starter-kit-load "misc-recommended")
+  (starter-kit-load "eshell")
+  (starter-kit-load "lisp")
+  (starter-kit-load "js")
+  (starter-kit-load "yasnippet")
+#+END_SRC
+
+** General editor improvements
+#+BEGIN_SRC emacs-lisp
+  (menu-bar-mode t)
+  (tool-bar-mode -1)
+  (scroll-bar-mode 'right)
+
+  ;; better smooth scrolling
+  (setq redisplay-dont-pause t
+        scroll-margin 1
+        scroll-step 1
+        scroll-conservatively 10000
+        scroll-preserve-screen-position 1)
+
+  ;; trucate even even when screen is split into multiple windows
+  (setq-default truncate-partial-width-windows nil)
+
+  (defalias 'yes-or-no-p 'y-or-n-p)  ; y/n instead of yes/no
+  (defalias 'auto-tail-revert-mode 'tail-mode)
+
+  (setq backup-inhibited t      ;; Disable backups
+        auto-save-default nil)  ;; disable auto save
+
+  (setq search-highlight t)
+  (transient-mark-mode t)
+  (pending-delete-mode t)
+
+  (custom-set-variables
+   '(blink-cursor-mode nil)
+   '(column-number-mode t)
+   '(size-indication-mode t)
+   '(display-time-mode nil)
+   '(inhibit-startup-screen t)
+   '(initial-scratch-message ";; This is your chance to scratch where it itches... in a manner of speaking")
+   '(tab-width 2)
+   '(track-eol t))
+#+END_SRC
+** OSX Specific stuff
+#+BEGIN_SRC emacs-lisp
+  ;; OSX specific settings
+  (setq mac-option-key-is-meta nil
+        mac-command-key-is-meta t
+        mac-command-modifier 'meta
+        mac-option-modifier 'none)
+#+END_SRC
+** dired improvements
+#+BEGIN_SRC emacs-lisp
+  ;; dired setup
+  (setq vc-follow-symlinks t)
+
+  ;; OSX ls doesn't support --dired, use gnu from homebrew instead
+  (setq insert-directory-program "gls"
+        dired-use-ls-dired t)
+#+END_SRC
+
+** mode-line configuration
+#+BEGIN_SRC emacs-lisp
+  (require 'smart-mode-line)
+  (sml/setup)
+#+END_SRC
+
+** undo/redo
+#+BEGIN_SRC emacs-lisp
+  (require 'redo+)
+#+END_SRC
+
+** whitespace configuration
+#+BEGIN_SRC emacs-lisp
+  (setq whitespace-line-column 120
+        whitespace-style '(face trailing tabs lines-tail space-before-tab::space
+                                space-after-tab::space tab-mark)
+        whitespace-action '(cleanup auto-cleanup report-on-bogus)
+        whitespace-display-mappings '((newline-mark 10 [182 10])
+                                      (tab-mark 9 [8614 9] [92 9])))
+
+  (global-whitespace-mode)
+  (add-hook 'before-save-hook 'whitespace-cleanup)
+#+END_SRC
+
+** themes
+#+BEGIN_SRC emacs-lisp
+  (add-to-list 'custom-theme-load-path "~/.emacs.d/src/themes/")
+  (setq custom-safe-themes t)
+  (load-theme 'calm-forest)
+#+END_SRC
+* org-mode setup
+  #+BEGIN_SRC emacs-lisp
+    (setq org-agenda-inhibit-startup nil
+          org-agenda-compact-blocks t
+          org-agenda-dim-blocked-tasks t
+          org-agenda-include-diary t
+          org-agenda-restore-windows-after-quit t
+          org-agenda-skip-deadline-if-done t
+          org-agenda-skip-timestamp-if-done t
+          org-agenda-tags-column -120
+          org-agenda-window-setup 'other-window
+          org-completion-use-ido t
+          org-cycle-separator-lines 0
+          org-default-notes-file "~/.emacs.d/org/captives.org"
+          org-default-priority 67
+          org-enforce-todo-checkbox-dependencies t
+          org-enforce-todo-dependencies t
+          org-habit-graph-column 50
+          org-habit-show-all-today t
+          org-inlinetask-show-first-star t
+          org-insert-heading-respect-content t
+          org-lowest-priority 70
+          org-modules '(org-checklist org-ctags org-docview org-expiry org-git-link
+                                      org-gnus org-habit org-id org-info org-jsinfo org-toc)
+          org-startup-folded 'content
+          org-startup-indented t
+          org-support-shift-select t
+          org-use-speed-commands t
+          org-src-fontify-natively 't)
+
+    (custom-set-variables
+     '(org-babel-load-languages (quote ((emacs-lisp . t) (ruby . r))))
+     '(org-confirm-babel-evaluate))
+
+    (global-set-key (kbd "C-c a") 'org-agenda)
+
+    (defun jw/mark-subtree-done ()
+      (interactive)
+      (org-mark-subtree)
+      (let ((limit (point)))
+        (save-excursion
+          (exchange-point-and-mark)
+          (while (> (point) limit)
+            (org-todo "DONE")
+            (outline-previous-visible-heading 1))
+          (org-todo "DONE"))))
+  #+END_SRC
+* emacs-lisp configuration
+
+** cask editing
+#+BEGIN_SRC emacs-lisp
+  ;; Cask files are emacs-lisp
+  (add-to-list 'auto-mode-alist '("Cask$" . emacs-lisp-mode))
+
+#+END_SRC
+
+* ruby configuration
