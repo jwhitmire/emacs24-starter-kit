@@ -1,4 +1,3 @@
-
 * Basic configurations
 
 ** Pull in other pieces of the starter kit
@@ -53,7 +52,24 @@
   (setq mac-option-key-is-meta nil
         mac-command-key-is-meta t
         mac-command-modifier 'meta
-        mac-option-modifier 'none)
+        mac-option-modifier 'none
+        x-select-enable-clipboard t)
+
+  ;; tweak OSX copy/paste keybindings
+  (global-set-key (kbd "M-w") 'jw-kill-buffer-and-frame)
+  (global-set-key (kbd "M-c") 'kill-ring-save)
+  (global-set-key (kbd "M-v") 'yank)
+
+  ;; ctrl-tab to switch emacs windows
+  (global-set-key [C-tab] 'next-multiframe-window)
+
+  ;; custom kill window function
+  (defun jw-kill-buffer-and-frame ()
+    "Close the frame in a manner consistent with OSX M-w and also kill the buffer"
+    (interactive)
+    (when (yes-or-no-p "Are you sure you want to delete the frame?")
+      (kill-buffer)
+      (delete-frame)))
 #+END_SRC
 ** dired improvements
 #+BEGIN_SRC emacs-lisp
@@ -61,8 +77,8 @@
   (setq vc-follow-symlinks t)
 
   ;; OSX ls doesn't support --dired, use gnu from homebrew instead
-  (setq insert-directory-program "gls"
-        dired-use-ls-dired t)
+  ;;(setq insert-directory-program "gls"
+  ;;      dired-use-ls-dired t)
 #+END_SRC
 
 ** mode-line configuration
@@ -74,6 +90,9 @@
 ** undo/redo
 #+BEGIN_SRC emacs-lisp
   (require 'redo+)
+
+  (global-set-key (kbd "M-z") 'undo)
+  (global-set-key (kbd "M-Z") 'redo)
 #+END_SRC
 
 ** whitespace configuration
@@ -94,6 +113,20 @@
   (add-to-list 'custom-theme-load-path "~/.emacs.d/src/themes/")
   (setq custom-safe-themes t)
   (load-theme 'calm-forest)
+#+END_SRC
+
+** font/face setup
+#+BEGIN_SRC emacs-lisp
+
+  (define-key global-map (kbd "C-+") 'text-scale-increase)
+  (define-key global-map (kbd "C--") 'text-scale-decrease)
+
+  ;; emoji-display
+  (require 'emoji-display)
+  (emoji-display-mode)
+
+  ;; figlet for more fun
+  (require 'figlet)
 #+END_SRC
 * org-mode setup
   #+BEGIN_SRC emacs-lisp
@@ -141,7 +174,66 @@
             (org-todo "DONE")
             (outline-previous-visible-heading 1))
           (org-todo "DONE"))))
+
+    (defun jw-org-mode-hook ()
+      (local-set-key (kbd "M-n") 'outline-next-visible-heading)
+      (local-set-key (kbd "M-p") 'outline-previous-visible-heading)
+      (local-set-key (kbd "M-L") 'org-toggle-link-display)
+
+      (org-set-local 'yas/trigger-key [tab])
+      (define-key yas/keymap [tab] 'yas/next-field-group))
+
+    (add-hook 'org-mode-hook 'jw-org-mode-hook)
   #+END_SRC
+* ido-mode/smex setup
+#+BEGIN_SRC emacs-lisp
+  (require 'flx-ido)
+  (ido-mode 1)
+  (ido-everywhere 1)
+  (flx-ido-mode 1)
+
+  ;; disable ido faces to see flx highlights
+  (setq ido-use-faces nil)
+
+  ;; smex setup
+  (setq smex-auto-update nil
+        smex-flex-matching t
+        smex-history-length 15
+        smex-prompt-string "You Rang? "
+        smex-safe-file (concat user-emacs-directory ".smex-items"))
+
+  (defun smex-update-after-load (unused)
+    (when (boundp 'smex-cache)
+      (smex-update)))
+  (add-hook 'after-load-functions 'smex-update-after-load)
+
+  (require 'smex)
+  (smex-initialize)
+  (global-set-key (kbd "M-x") 'smex)
+  (global-set-key (kbd "M-X") 'smex-major-mode-commands)
+  (global-set-key (kbd "C-c C-c M-x") 'execute-extended-command) ; old M-x definition
+
+  (defadvice ido-set-matches-1 (after ido-acronym-matches activate)
+    (if (> (length ido-text) 1)
+        (let ((regex (concat "^" (mapconcat 'char-to-string ido-text "[^-]*-")
+                             "[^-]*$")))
+          (setq ad-return-value
+                (append (reverse
+                         (remove-if-not
+                          (lambda (i)
+                            (string-match regex i)) items))
+                        ad-return-value)))))
+
+  (defadvice smex (around space-inserts-hyphen activate compile)
+    (let ((ido-cannot-complete-command
+           '(lambda ()
+              (interactive)
+              (if (string= " " (this-command-keys))
+                  (insert ?-)
+                (funcall ,ido-cannot-complete-command)))))
+      ad-do-it))
+
+#+END_SRC
 * emacs-lisp configuration
 
 ** cask editing
@@ -151,4 +243,158 @@
 
 #+END_SRC
 
+* smartparans configuration
+#+BEGIN_SRC emacs-lisp
+  (require 'smartparens-config)
+  (require 'smartparens-ruby)
+
+  (smartparens-global-mode t)
+  (show-smartparens-global-mode t)
+
+  (--each sp--html-modes
+    (eval-after-load (symbol-name it) '(require 'smartparens-html)))
+
+  (sp-with-modes '(rhtml-mode)
+                 (sp-local-pair "<" ">")
+                 (sp-local-pair "<%" "%>"))
+
+  (sp-pair "'" nil :unless '(sp-point-after-word-p))
+  (sp-with-modes sp--lisp-modes
+    (sp-local-pair "'" nil :actions nil)
+    (sp-local-pair "`" "'" :when '(sp-in-string-p))
+    (sp-local-pair "(" nil :bind "C-("))
+
+  (sp-with-modes sp--html-modes
+    (sp-local-pair "<%" "%>"))
+
+  (sp-local-pair 'minibuffer-inactive-mode "'" nil :actions nil)
+
+  (define-key emacs-lisp-mode-map (kbd ")") 'sp-up-sexp)
+
+  ;; (define-key sp-keymap (kbd "C-M-f") 'sp-forward-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-b") 'sp-backward-sexp)
+
+  ;; (define-key sp-keymap (kbd "C-M-d") 'sp-down-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-a") 'sp-backward-down-sexp)
+  ;; (define-key sp-keymap (kbd "C-S-a") 'sp-beginning-of-sexp)
+  ;; (define-key sp-keymap (kbd "C-S-e") 'sp-end-of-sexp)
+
+  ;; (define-key sp-keymap (kbd "C-M-e") 'sp-up-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-u") 'sp-backward-up-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-t") 'sp-transpose-sexp)
+
+  ;; (define-key sp-keymap (kbd "C-M-n") 'sp-next-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-p") 'sp-previous-sexp)
+
+  ;; (define-key sp-keymap (kbd "C-M-k") 'sp-kill-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-w") 'sp-copy-sexp)
+
+  ;; (define-key sp-keymap (kbd "M-<delete>") 'sp-unwrap-sexp)
+  ;; (define-key sp-keymap (kbd "M-<backspace>") 'sp-backward-unwrap-sexp)
+
+  ;; (define-key sp-keymap (kbd "C-<right>") 'sp-forward-slurp-sexp)
+  ;; (define-key sp-keymap (kbd "C-<left>") 'sp-forward-barf-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-<left>") 'sp-backward-slurp-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-<right>") 'sp-backward-barf-sexp)
+
+  ;; (define-key sp-keymap (kbd "M-D") 'sp-splice-sexp)
+  ;; (define-key sp-keymap (kbd "C-M-<delete>") 'sp-splice-sexp-killing-forward)
+  ;; (define-key sp-keymap (kbd "C-M-<backspace>") 'sp-splice-sexp-killing-backward)
+  ;; (define-key sp-keymap (kbd "C-S-<backspace>") 'sp-splice-sexp-killing-around)
+
+  ;; (define-key sp-keymap (kbd "C-]") 'sp-select-next-thing-exchange)
+  ;; (define-key sp-keymap (kbd "C-<left_bracket>") 'sp-select-previous-thing)
+  ;; (define-key sp-keymap (kbd "C-M-]") 'sp-select-next-thing)
+
+  ;; (define-key sp-keymap (kbd "M-F") 'sp-forward-symbol)
+  ;; (define-key sp-keymap (kbd "M-B") 'sp-backward-symbol)
+
+  ;; (define-key sp-keymap (kbd "H-t") 'sp-prefix-tag-object)
+  ;; (define-key sp-keymap (kbd "H-p") 'sp-prefix-pair-object)
+  ;; (define-key sp-keymap (kbd "H-s c") 'sp-convolute-sexp)
+  ;; (define-key sp-keymap (kbd "H-s a") 'sp-absorb-sexp)
+  ;; (define-key sp-keymap (kbd "H-s e") 'sp-emit-sexp)
+  ;; (define-key sp-keymap (kbd "H-s p") 'sp-add-to-previous-sexp)
+  ;; (define-key sp-keymap (kbd "H-s n") 'sp-add-to-next-sexp)
+  ;; (define-key sp-keymap (kbd "H-s j") 'sp-join-sexp)
+  ;; (define-key sp-keymap (kbd "H-s s") 'sp-split-sexp)
+
+  ;; ;;;; Smartparens
+  ;; (require 'smartparens-config)           ; Setup standard configuration
+
+  ;; (stante-after smartparens
+  ;;   (setq sp-autoskip-closing-pair 'always
+  ;;         ;; Don't kill the entire symbol on C-k
+  ;;         sp-hybrid-kill-entire-symbol nil)
+
+  ;;   ;; Smartparens bindings
+  ;;   (let ((map smartparens-mode-map))
+  ;;     ;; Movement and navigation
+  ;;     (define-key map (kbd "C-M-f") #'sp-forward-sexp)
+  ;;     (define-key map (kbd "C-M-b") #'sp-backward-sexp)
+  ;;     (define-key map (kbd "C-M-u") #'sp-backward-up-sexp)
+  ;;     (define-key map (kbd "C-M-d") #'sp-down-sexp)
+  ;;     (define-key map (kbd "C-M-p") #'sp-backward-down-sexp)
+  ;;     (define-key map (kbd "C-M-n") #'sp-up-sexp)
+  ;;     ;; Deleting and killing
+  ;;     (define-key map (kbd "C-M-k") #'sp-kill-sexp)
+  ;;     (define-key map (kbd "C-M-w") #'sp-copy-sexp)
+  ;;     ;; Depth changing
+  ;;     (define-key map (kbd "M-s") #'sp-splice-sexp)
+  ;;     (define-key map (kbd "M-<up>") #'sp-splice-sexp-killing-backward)
+  ;;     (define-key map (kbd "M-<down>") #'sp-splice-sexp-killing-forward)
+  ;;     (define-key map (kbd "M-r") #'sp-splice-sexp-killing-around)
+  ;;     (define-key map (kbd "M-?") #'sp-convolute-sexp)
+  ;;     ;; Barfage & Slurpage
+  ;;     (define-key map (kbd "C-)")  #'sp-forward-slurp-sexp)
+  ;;     (define-key map (kbd "C-<right>") #'sp-forward-slurp-sexp)
+  ;;     (define-key map (kbd "C-}")  #'sp-forward-barf-sexp)
+  ;;     (define-key map (kbd "C-<left>") #'sp-forward-barf-sexp)
+  ;;     (define-key map (kbd "C-(")  #'sp-backward-slurp-sexp)
+  ;;     (define-key map (kbd "C-M-<left>") #'sp-backward-slurp-sexp)
+  ;;     (define-key map (kbd "C-{")  #'sp-backward-barf-sexp)
+  ;;     (define-key map (kbd "C-M-<right>") #'sp-backward-barf-sexp)
+  ;;     ;; Miscellaneous commands
+  ;;     (define-key map (kbd "M-S") #'sp-split-sexp)
+  ;;     (define-key map (kbd "M-J") #'sp-join-sexp)
+  ;;     (define-key map (kbd "C-M-t") #'sp-transpose-sexp))
+
+  ;;   ;; Some additional bindings for strict mode
+  ;;   (let ((map smartparens-strict-mode-map))
+  ;;     (define-key map (kbd "M-q") #'sp-indent-defun)
+  ;;     (define-key map (kbd "C-j") #'sp-newline)))
+
+  ;; (smartparens-global-mode)
+  ;; (show-smartparens-global-mode)          ; Show parenthesis
+
+
+#+END_SRC
+
+* general development
+#+BEGIN_SRC emacs-lisp
+
+  (global-set-key (kbd "M-/") 'comment-or-uncomment-region)
+
+  (global-set-key "\C-xy" 'revert-buffer)
+#+END_SRC
 * ruby configuration
+#+BEGIN_SRC emacs-lisp
+  (require 'chruby)
+  (chruby "ruby-2.1.1")
+
+  (require 'bundler)
+
+  (require 'robe)
+  (add-hook 'enh-ruby-mode 'robe-mode)
+  (push 'ac-source-robe ac-sources)
+  (add-hook 'robe-mode-hook 'ac-robe-setup)
+
+#+END_SRC
+* auto-complete setup
+#+BEGIN_SRC emacs-lisp
+  (require 'auto-complete-config)
+  (add-to-list 'ac-dictionary-dictionaries "~/.emacs.d/.cask/24.3.50.1/elpa/auto-complete-20140322.321/dict")
+  (ac-config-default)
+  (add-to-list 'ac-modes 'ruby-mode)
+  (add-to-list 'ac-modes 'web-mode)
+#+END_SRC
