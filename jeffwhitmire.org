@@ -465,6 +465,56 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
   (add-to-list 'ac-modes 'web-mode)
 #+END_SRC
 
+* shell configuration setup
+#+BEGIN_SRC emacs-lisp
+
+  ;; To get rid of Weird color escape sequences in Emacs.
+  ;; Instruct Emacs to use emacs term-info not system term info
+  ;; http://stackoverflow.com/questions/8918910/weird-character-zsh-in-emacs-terminal
+  (setq system-uses-terminfo nil)
+
+  ;; Prefer utf-8 encoding
+  (prefer-coding-system 'utf-8)
+
+  ;;;; ansi colorization
+  (require 'ansi-color)
+  (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+  (defun colorize-compilation-buffer ()
+    (interactive)
+    (toggle-read-only)
+    (ansi-color-apply-on-region (point-min) (point-max))
+    (toggle-read-only))
+  (add-hook 'compilation-filter-hook 'colorize-compilation-buffer)
+
+  ;;
+  ;; shell script setup
+  ;;
+  (eval-after-load 'sh-mode
+    '(progn
+       (define-key sh-mode-map (kbd "RET") 'reindent-then-newline-and-indent)))
+
+  ;;
+  ;; multi-term setup
+  ;;
+  (require 'multi-term)
+  (setq multi-term-program "/user/local/bin/zsh")
+
+  (add-hook 'comint-output-filter-functions
+            'shell-strip-ctrl-m nil t)
+
+  ;; Set executable path to match what it is outside of emacs
+  (when (memq window-system '(mac ns))
+      (exec-path-from-shell-initialize))
+
+  ;;
+  ;; eshell setup
+  ;;
+  (setq eshell-cmpl-cycle-completions nil
+        eshell-save-history-on-exit t
+        eshell-buffer-shorthand t
+        eshell-cmpl-dir-ignore "\\`\\(\\.\\.?\\|CVS\\|\\.svn\\|\\.git\\)/\\'")
+
+#+END_SRC
 * general development
 #+BEGIN_SRC emacs-lisp
 
