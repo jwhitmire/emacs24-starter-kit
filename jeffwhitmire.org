@@ -74,15 +74,6 @@
       (kill-buffer)
       (delete-frame)))
 #+END_SRC
-** dired improvements
-#+BEGIN_SRC emacs-lisp
-  ;; dired setup
-  (setq vc-follow-symlinks t)
-
-  ;; OSX ls doesn't support --dired, use gnu from homebrew instead
-  ;;(setq insert-directory-program "gls"
-  ;;      dired-use-ls-dired t)
-#+END_SRC
 
 ** mode-line configuration
 #+BEGIN_SRC emacs-lisp
@@ -210,7 +201,9 @@
   (global-set-key (kbd "C-S-k") 'kill-whole-line) ; kill line regardless of position
 
 #+END_SRC
-* org-mode setup
+
+* emacs tool/environment setup
+** org-mode setup
   #+BEGIN_SRC emacs-lisp
     (require 'org-compat)
 
@@ -270,7 +263,7 @@
     (add-hook 'org-mode-hook 'jw-org-mode-hook)
   #+END_SRC
 
-* ido-mode/smex setup
+** ido-mode/smex setup
 More ido setup and configuration can be found at http://www.masteringemacs.org/articles/2010/10/10/introduction-to-ido-mode/
 
 #+BEGIN_SRC emacs-lisp
@@ -321,17 +314,154 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
                 (funcall ,ido-cannot-complete-command)))))
       ad-do-it))
 #+END_SRC
-
-* emacs-lisp configuration
-
-** cask editing
+** dired improvements
 #+BEGIN_SRC emacs-lisp
-  ;; Cask files are emacs-lisp
-  (add-to-list 'auto-mode-alist '("Cask$" . emacs-lisp-mode))
+  ;; dired setup
+  (setq vc-follow-symlinks t)
+
+  ;; OSX ls doesn't support --dired, use gnu from homebrew instead
+  ;;(setq insert-directory-program "gls"
+  ;;      dired-use-ls-dired t)
+#+END_SRC
+** auto-complete setup
+#+BEGIN_SRC emacs-lisp
+  (require 'auto-complete-config)
+  ;(add-to-list 'ac-dictionary-dictionaries "~/.emacs.d/.cask/24.3.50.1/elpa/auto-complete-20140322.321/dict")
+  (ac-config-default)
+  (add-to-list 'ac-modes 'ruby-mode)
+  (add-to-list 'ac-modes 'web-mode)
+#+END_SRC
+
+** shell configuration setup
+#+BEGIN_SRC emacs-lisp
+
+  ;; To get rid of Weird color escape sequences in Emacs.
+  ;; Instruct Emacs to use emacs term-info not system term info
+  ;; http://stackoverflow.com/questions/8918910/weird-character-zsh-in-emacs-terminal
+  (setq system-uses-terminfo nil)
+
+  ;; Prefer utf-8 encoding
+  (prefer-coding-system 'utf-8)
+
+  ;;;; ansi colorization
+  (require 'ansi-color)
+  (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+  (defun colorize-compilation-buffer ()
+    (interactive)
+    (toggle-read-only)
+    (ansi-color-apply-on-region (point-min) (point-max))
+    (toggle-read-only))
+  (add-hook 'compilation-filter-hook 'colorize-compilation-buffer)
+
+  ;;
+  ;; shell script setup
+  ;;
+  (eval-after-load 'sh-mode
+    '(progn
+       (define-key sh-mode-map (kbd "RET") 'reindent-then-newline-and-indent)))
+
+  ;;
+  ;; multi-term setup
+  ;;
+  (require 'multi-term)
+  (setq multi-term-program "/user/local/bin/zsh")
+
+  (add-hook 'comint-output-filter-functions
+            'shell-strip-ctrl-m nil t)
+
+  ;; Set executable path to match what it is outside of emacs
+  (when (memq window-system '(mac ns))
+      (exec-path-from-shell-initialize))
+
+  ;;
+  ;; eshell setup
+  ;;
+  (setq eshell-cmpl-cycle-completions nil
+        eshell-save-history-on-exit t
+        eshell-buffer-shorthand t
+        eshell-cmpl-dir-ignore "\\`\\(\\.\\.?\\|CVS\\|\\.svn\\|\\.git\\)/\\'")
 
 #+END_SRC
 
-* smartparans configuration
+* development environment configuration
+** generic development
+#+BEGIN_SRC emacs-lisp
+
+  ;; rebind hippie-expand
+  (global-set-key (kbd "C-?") 'hippie-expand)
+
+  (global-unset-key (kbd "M-/"))
+  (global-set-key (kbd "M-/") 'comment-or-uncomment-region)
+
+  (global-set-key "\C-xy" 'revert-buffer)
+
+  ;; reformat the entire buffer
+  (defun indent-buffer ()
+    "indent whole buffer"
+    (interactive)
+    (delete-trailing-whitespace)
+    (indent-region (point-min) (point-max) nil)
+    (untabify (point-min) (point-max)))
+  (global-set-key (kbd "C-M-|") 'indent-buffer)
+#+END_SRC
+** git setup
+#+BEGIN_SRC emacs-lisp
+  ;;;; git setup
+
+  (when (window-system)
+    (require 'git-gutter-fringe))
+
+  (after 'git-gutter-mode-autoloads
+         (global-git-gutter-mode +1)
+         (setq-default indicate-buffer-boundaries 'left)
+         (setq-default indicate-empty-lines +1)
+
+         (add-hook 'enh-ruby-mode-hook 'git-gutter-mode)
+         (add-hook 'web-mode-hook 'git-gutter-mode)
+         (add-hook 'css-mode-hook 'git-gutter-mode)
+         (add-hook 'javascript-mode-hook 'git-gutter-mode)
+         (add-hook 'coffee-mode-hook 'git-gutter-mode)
+         (add-hook 'js2-mode-hook 'git-gutter-mode)
+         (add-hook 'yaml-mode-hook 'git-gutter-mode)
+         (add-hook 'emacs-lisp-mode-hook 'git-gutter-mode)
+         (add-hook 'thrift-mode-hook 'git-gutter-mode)
+
+         ;; (dolist
+         ;;     (hook '(emacs-lisp-mode-hook
+         ;;             enh-ruby-mode-hook
+         ;;             js2-mode-hook
+         ;;             lisp-mode-hook
+         ;;             yaml-mode-hook))
+         ;;   (add-hook hook 'git-gutter-mode))
+
+         (global-set-key (kbd "C-x C-g") 'git-gutter:toggle)
+         (global-set-key (kbd "C-x v =") 'git-gutter:popup-hunk)
+         (global-set-key (kbd "C-x p") 'git-gutter:previous-hunk)
+         (global-set-key (kbd "C-x n") 'git-gutter:next-hunk)
+         (global-set-key (kbd "C-x r") 'git-gutter:revert-hunk))
+
+  (global-set-key (kbd "C-x v p") 'git-messenger:popup-message)
+
+  (after 'magit-autoloads
+    (global-set-key (kbd "C-c g") 'magit-status)
+
+    ;; shamlessly stolen from http://whattheemacsd.com/setup-magit.el-01.html
+    (defadvice magit-status
+        (around magit-fullscreen activate)
+      (window-configuration-to-register :magit-fullscreen)
+      ad-do-it
+      (delete-other-windows))
+
+    (defun magit-quit-session ()
+      "Restores the previous window configuration and kills the magit buffer"
+      (interactive)
+      (kill-buffer)
+      (jump-to-register :magit-fullscreen))
+
+    (define-key magit-status-mode-map (kbd "q") 'magit-quit-session))
+
+#+END_SRC
+** smartparans configuration
 #+BEGIN_SRC emacs-lisp
   (require 'smartparens-config)
   (require 'smartparens-ruby)
@@ -455,88 +585,35 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
   ;; (smartparens-global-mode)
   ;; (show-smartparens-global-mode)          ; Show parenthesis
 #+END_SRC
-
-* auto-complete setup
+** emacs-lisp configuration
 #+BEGIN_SRC emacs-lisp
-  (require 'auto-complete-config)
-  (add-to-list 'ac-dictionary-dictionaries "~/.emacs.d/.cask/24.3.50.1/elpa/auto-complete-20140322.321/dict")
-  (ac-config-default)
-  (add-to-list 'ac-modes 'ruby-mode)
-  (add-to-list 'ac-modes 'web-mode)
-#+END_SRC
+  ;; Cask files are emacs-lisp
+  (add-to-list 'auto-mode-alist '("Cask$" . emacs-lisp-mode))
 
-* shell configuration setup
-#+BEGIN_SRC emacs-lisp
+  (define-key emacs-lisp-mode-map (kbd "C-c v") 'eval-buffer)
+  (define-key read-expression-map (kbd "TAB") 'lisp-complete-symbol)
+  (define-key lisp-mode-shared-map (kbd "RET") 'reindent-then-newline-and-indent)
 
-  ;; To get rid of Weird color escape sequences in Emacs.
-  ;; Instruct Emacs to use emacs term-info not system term info
-  ;; http://stackoverflow.com/questions/8918910/weird-character-zsh-in-emacs-terminal
-  (setq system-uses-terminfo nil)
-
-  ;; Prefer utf-8 encoding
-  (prefer-coding-system 'utf-8)
-
-  ;;;; ansi colorization
-  (require 'ansi-color)
-  (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
-  (defun colorize-compilation-buffer ()
+  ;; Remove the .elc file when saving a .el file
+  (defun remove-elc-on-save ()
     (interactive)
-    (toggle-read-only)
-    (ansi-color-apply-on-region (point-min) (point-max))
-    (toggle-read-only))
-  (add-hook 'compilation-filter-hook 'colorize-compilation-buffer)
+    (if (file-exists-p (concat buffer-file-name "c"))
+        (delete-file (concat buffer-file-name "c"))))
 
-  ;;
-  ;; shell script setup
-  ;;
-  (eval-after-load 'sh-mode
-    '(progn
-       (define-key sh-mode-map (kbd "RET") 'reindent-then-newline-and-indent)))
+  (add-hook 'after-save-hook 'remove-elc-on-save)
 
-  ;;
-  ;; multi-term setup
-  ;;
-  (require 'multi-term)
-  (setq multi-term-program "/user/local/bin/zsh")
-
-  (add-hook 'comint-output-filter-functions
-            'shell-strip-ctrl-m nil t)
-
-  ;; Set executable path to match what it is outside of emacs
-  (when (memq window-system '(mac ns))
-      (exec-path-from-shell-initialize))
-
-  ;;
-  ;; eshell setup
-  ;;
-  (setq eshell-cmpl-cycle-completions nil
-        eshell-save-history-on-exit t
-        eshell-buffer-shorthand t
-        eshell-cmpl-dir-ignore "\\`\\(\\.\\.?\\|CVS\\|\\.svn\\|\\.git\\)/\\'")
-
-#+END_SRC
-* general development
-#+BEGIN_SRC emacs-lisp
-
-  ;; rebind hippie-expand
-  (global-set-key (kbd "C-?") 'hippie-expand)
-
-  (global-unset-key (kbd "M-/"))
-  (global-set-key (kbd "M-/") 'comment-or-uncomment-region)
-
-  (global-set-key "\C-xy" 'revert-buffer)
-
-  ;; reformat the entire buffer
-  (defun indent-buffer ()
-    "indent whole buffer"
+  ;; Automatically byte compile a .el file on save
+  (defun auto-recomple-el-buffer ()
     (interactive)
-    (delete-trailing-whitespace)
-    (indent-region (point-min) (point-max) nil)
-    (untabify (point-min) (point-max)))
-  (global-set-key (kbd "C-M-|") 'indent-buffer)
+    (when (and (eq major-mode 'emacs-lisp-mode)
+               (file-exists-p (byte-compile-dest-file buffer-file-name)))
+      (byte-compile-file buffer-file-name)))
+
+  (add-hook 'after-save-hook 'auto-recomple-el-buffer)
+
 #+END_SRC
 
-* ruby configuration
+** ruby configuration
 #+BEGIN_SRC emacs-lisp
   (require 'chruby)
   (chruby "ruby-2.1.1")
@@ -547,4 +624,195 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
   (add-hook 'enh-ruby-mode 'robe-mode)
   (push 'ac-source-robe ac-sources)
   (add-hook 'robe-mode-hook 'ac-robe-setup)
+
+  (defun ruby-interpolate ()
+    "In a double quoted string, interpolate."
+    (interactive)
+    (insert "#")
+    (when (and
+           (looking-back "\".*")
+           (looking-at ".*\""))
+      (insert "{}")
+      (backward-char 1)))
+
+  (require 'compile)
+
+  (after 'ruby-mode-autoloads
+         ;; work around possible ELPA bug
+         (ignore-errors (require 'ruby-compilation))
+
+         (define-key ruby-mode-map (kbd "RET") 'reindent-then-newline-and-indent)
+         (define-key ruby-mode-map (kbd "TAB") 'indent-for-tab-command)
+         (define-key ruby-mode-map (kbd "#") 'ruby-interpolate)
+         (define-key ruby-mode-map (kbd "C-M-h") 'backward-kill-word)
+         (define-key ruby-mode-map (kbd "C-c , ,") 'jw-open-spec-other-buffer))
+
+  (require 'highlight-indentation)
+  (add-hook 'ruby-mode-hook 'highlight-indentation-current-column-mode)
+  (add-hook 'coffee-mode-hook 'highlight-indentation-current-column-mode)
+
+  ;; set up outline mode
+  (defun ruby-outline-level ()
+    (or (and (match-string 1)
+             (or (cdr (assoc (match-string 1) outline-heading-alist))
+                 (- (match-end 1) (match-beginning 1))))
+        (cdr (assoc (match-string 0) outline-heading-alist))
+        (- (match-end 0) (match-beginning 0))))
+
+  (add-hook 'ruby-mode-hook
+            (lambda ()
+              (set (make-local-variable 'outline-level) 'ruby-outline-level)
+              (set (make-local-variable 'outline-regexp)
+                   (rx (group (* " "))
+                       bow
+                       (or "begin" "case" "class" "def" "else" "elsif"
+                           "ensure" "if" "module" "rescue" "when" "unless"
+                           "describe" "context" "it" "before")
+                       eow))
+              (outline-minor-mode)))
+
+  (defun outline-cycle-fast ()
+    "Emulates 2 hits of the outline-cycle, which is correct 90% of the time"
+    (interactive)
+
+    (hide-subtree)
+    (show-entry)
+    (show-children)
+    (setq this-command 'outline-cycle-children))
+
+  (add-hook 'outline-minor-mode-hook
+            (lambda ()
+              (require 'outline-magic)
+
+              (define-key outline-minor-mode-map (kbd "M-o M-o") 'outline-cycle)
+              (define-key outline-minor-mode-map (kbd "M-o o") 'outline-cycle-fast)))
+
+  (require 'ruby-tools)
+
+#+END_SRC
+
+** web-mode configuration
+#+BEGIN_SRC emacs-lisp
+  (defun jw-web-mode-hook ()
+    "Hooks for web-mode"
+    (setq web-mode-markup-indent-offset 2
+          web-mode-css-indent-offset 2
+          web-mode-code-indent-offset 2
+          web-mode-indent-style 2
+          web-mode-style-padding 1
+          web-mode-script-padding 1
+          web-mode-block-padding 0
+          web-mode-comment-style 2
+          web-mode-enable-block-face t
+          web-mode-enable-part-face t
+          web-mode-enable-comment-keywords t
+          web-mode-enable-current-element-highlight t)
+    (local-set-key (kbd "RET") 'newline-and-indent)
+    (define-key web-mode-map (kbd "C-m") 'newline-and-indent))
+  (add-hook 'web-mode-hook 'jw-web-mode-hook)
+#+END_SRC
+
+*** css/scss configuration
+#+BEGIN_SRC emacs-lisp
+  ;; css-mode
+  (autoload 'css-mode "css-mode" nil t)
+  (add-to-list 'auto-mode-alist '("\\.css$" . css-mode))
+  (setq cssm-indent-function #'cssm-c-style-indenter)
+
+  ;; setup scss mode
+  (when (require 'scss-mode nil t)
+    (setq scss-compile-at-save nil)
+    (setq exec-path (cons (expand-file-name "~/.gem/ruby/2.0.0/bin") exec-path))
+    (autoload 'scss-mode "scss-mode")
+    (add-to-list 'auto-mode-alist '("\\.scss\\'" . scss-mode))
+    (add-to-list 'ac-modes 'scss-mode))
+
+  (defun brace-ret-brace ()
+    (interactive)
+    (insert "{")
+    (newline-and-indent)
+    (newline-and-indent)
+    (insert "}")
+    (indent-for-tab-command)
+    (newline-and-indent)
+    (newline-and-indent)
+    (previous-line)
+    (previous-line)
+    (previous-line)
+    (indent-for-tab-command))
+
+  (defun jw-css-mode-hook ()
+    "Hooks for css-mode"
+    (setq css-indent-offset 2)
+    (define-key css-mode-map "M-{" 'brace-ret-brace)
+    (local-set-key (kbd "RET") 'newline-and-indent))
+
+  (add-hook 'css-mode-hook 'jw-css-mode-hook)
+
+  (eval-after-load 'auto-complete
+    '(progn
+       (dolist (hook '(css-mode-hook sass-mode-hook scss-mode-hook))
+         (add-hook hook 'ac-css-mode-setup))))
+
+#+END_SRC
+
+*** skewer mode
+#+BEGIN_SRC emacs-lisp
+(skewer-setup)
+#+END_SRC
+** coffeescript config
+#+BEGIN_SRC emacs-lisp
+  ;;
+  ;; coffeescript setup
+  ;;
+  (require 'coffee-mode)
+  (defun jw-coffee-setup ()
+    (interactive)
+    (message "Loading coffee-mode hook")
+
+    ;; set up tab handling
+    (make-local-variable 'tab-width)
+    (setq tab-width 2
+          coffee-tab-width 2)
+
+    ;; set M-r to compile buffer
+    (define-key coffee-mode-map (kbd "M-r") 'coffee-compile-buffer)
+
+    ;; compile coffee files on save
+    (and (file-exists-p (buffer-file-name))
+         (file-exists-p (coffee-compiled-file-name))
+         (coffee-cos-mode t)))
+  (add-hook 'coffee-mode-hook 'jw-coffee-setup)
+
+
+#+END_SRC
+
+** javascript config
+#+BEGIN_SRC emacs-lisp
+  ;;
+  ;; javascript setup
+  ;;
+  (autoload 'js2-mode "js2" nil t)
+  (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+  (after 'js2-mode-autoloads
+         (require 'js2-refactor)
+
+         (setq js2-use-font-lock-faces t
+               js2-mode-must-byte-compile nil
+               js2-basic-offset 2
+               js2-indent-on-enter-key t
+               js2-auto-indent-p t
+               js2-bounce-indent-p nil)
+
+         (add-hook 'js2-mode-hook
+                   '(lambda ()
+                      (setq mode-name "JS2")
+                      (make-local-variable 'yas-extra-modes)
+                      (add-to-list 'yas-extra-modes 'javascript-mode)
+                      (yas-minor-mode 1)))
+         (js2-imenu-extras-setup)
+       (add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+       (add-to-list 'auto-mode-alist '("\\.json$" . js2-mode)))
+
+
 #+END_SRC
