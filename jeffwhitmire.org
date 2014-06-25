@@ -48,6 +48,25 @@
    '(initial-scratch-message ";; This is your chance to scratch where it itches... in a manner of speaking")
    '(tab-width 2)
    '(track-eol t))
+
+  ;; iswitchb behavior
+  (iswitchb-mode 1)
+  (setq iswitchb-default-method 'samewindow)
+
+  (defadvice iswitchb-kill-buffer (after rescan-after-kill activate)
+    "*Regenerate the list of matching buffer names after a kill.
+  Necessary if using `uniquify` with `uniquify-after-kill-bufer-p`
+  set to non-nill."
+    (setq iswitchb-buflist iswitchb-matches)
+    (iswitchb-rescan))
+
+  (defun iswitchb-rescan ()
+    "*Regenerate the list of matching buffer names."
+    (interactive)
+    (iswitchb-make-buflist iswitchb-default)
+    (setq iswitchb-rescan t))
+
+
 #+END_SRC
 ** OSX Specific stuff
 #+BEGIN_SRC emacs-lisp
@@ -328,7 +347,7 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
   (require 'auto-complete-config)
   ;(add-to-list 'ac-dictionary-dictionaries "~/.emacs.d/.cask/24.3.50.1/elpa/auto-complete-20140322.321/dict")
   (ac-config-default)
-  (add-to-list 'ac-modes 'ruby-mode)
+  (add-to-list 'ac-modes 'enh-ruby-mode)
   (add-to-list 'ac-modes 'web-mode)
 #+END_SRC
 
@@ -382,7 +401,12 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
         eshell-cmpl-dir-ignore "\\`\\(\\.\\.?\\|CVS\\|\\.svn\\|\\.git\\)/\\'")
 
 #+END_SRC
+** server mode setup
+#+BEGIN_SRC emacs-lisp
+  (if (not server-mode)
+      (server-start nil t))
 
+#+END_SRC
 * development environment configuration
 ** generic development
 #+BEGIN_SRC emacs-lisp
@@ -442,23 +466,22 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
 
   (global-set-key (kbd "C-x v p") 'git-messenger:popup-message)
 
-  (after 'magit-autoloads
-    (global-set-key (kbd "C-c g") 'magit-status)
+  (global-set-key (kbd "C-c g") 'magit-status)
 
-    ;; shamlessly stolen from http://whattheemacsd.com/setup-magit.el-01.html
-    (defadvice magit-status
-        (around magit-fullscreen activate)
-      (window-configuration-to-register :magit-fullscreen)
-      ad-do-it
-      (delete-other-windows))
+  ;; shamlessly stolen from http://whattheemacsd.com/setup-magit.el-01.html
+  (defadvice magit-status
+      (around magit-fullscreen activate)
+    (window-configuration-to-register :magit-fullscreen)
+    ad-do-it
+    (delete-other-windows))
 
-    (defun magit-quit-session ()
-      "Restores the previous window configuration and kills the magit buffer"
-      (interactive)
-      (kill-buffer)
-      (jump-to-register :magit-fullscreen))
+  (defun magit-quit-session ()
+    "Restores the previous window configuration and kills the magit buffer"
+    (interactive)
+    (kill-buffer)
+    (jump-to-register :magit-fullscreen))
 
-    (define-key magit-status-mode-map (kbd "q") 'magit-quit-session))
+  (define-key magit-status-mode-map (kbd "q") 'magit-quit-session)
 
 #+END_SRC
 ** smartparans configuration
@@ -637,18 +660,30 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
 
   (require 'compile)
 
-  (after 'ruby-mode-autoloads
-         ;; work around possible ELPA bug
-         (ignore-errors (require 'ruby-compilation))
+  (defun jw-enh-ruby-mode-hook ()
+    "Hooks for enh-ruby-mode"
+    (define-key enh-ruby-mode-map (kbd "RET") newline-and-indent)
+    (define-key enh-ruby-mode-map (kbd "TAB") 'indent-for-tab-command)
+    (define-key enh-ruby-mode-map (kbd "#") 'ruby-interpolate)
+    (define-key enh-ruby-mode-map (kbd "C-M-h") 'backward-kill-word)
+    (define-key enh-ruby-mode-map (kbd "C-c , ,") 'jw-open-spec-other-buffer)
+    (set (make-local-variable 'outline-level) 'ruby-outline-level)
+    (set (make-local-variable 'outline-regexp)
+         (rx (group (* " "))
+             bow
+             (or "begin" "case" "class" "def" "else" "elsif"
+                 "ensure" "if" "module" "rescue" "when" "unless"
+                 "describe" "context" "it" "before")
+             eow))
+    (outline-minor-mode))
+  (add-hook 'enh-ruby-mode-hook 'jw-enh-ruby-mode-hook)
 
-         (define-key ruby-mode-map (kbd "RET") 'reindent-then-newline-and-indent)
-         (define-key ruby-mode-map (kbd "TAB") 'indent-for-tab-command)
-         (define-key ruby-mode-map (kbd "#") 'ruby-interpolate)
-         (define-key ruby-mode-map (kbd "C-M-h") 'backward-kill-word)
-         (define-key ruby-mode-map (kbd "C-c , ,") 'jw-open-spec-other-buffer))
+  (after 'enh-ruby-mode-autoloads
+    ;; work around possible ELPA bug
+    (ignore-errors (require 'ruby-compilation)))
 
   (require 'highlight-indentation)
-  (add-hook 'ruby-mode-hook 'highlight-indentation-current-column-mode)
+  (add-hook 'enh-ruby-mode-hook 'highlight-indentation-current-column-mode)
   (add-hook 'coffee-mode-hook 'highlight-indentation-current-column-mode)
 
   ;; set up outline mode
@@ -659,8 +694,14 @@ More ido setup and configuration can be found at http://www.masteringemacs.org/a
         (cdr (assoc (match-string 0) outline-heading-alist))
         (- (match-end 0) (match-beginning 0))))
 
-  (add-hook 'ruby-mode-hook
+  (add-hook 'enh-ruby-mode-hook
             (lambda ()
+              (define-key enh-ruby-mode-map (kbd "C-m") newline-and-indent)
+              (define-key enh-ruby-mode-map (kbd "RET") newline-and-indent)
+              (define-key enh-ruby-mode-map (kbd "TAB") 'indent-for-tab-command)
+              (define-key enh-ruby-mode-map (kbd "#") 'ruby-interpolate)
+              (define-key enh-ruby-mode-map (kbd "C-M-h") 'backward-kill-word)
+              (define-key enh-ruby-mode-map (kbd "C-c , ,") 'jw-open-spec-other-buffer)
               (set (make-local-variable 'outline-level) 'ruby-outline-level)
               (set (make-local-variable 'outline-regexp)
                    (rx (group (* " "))

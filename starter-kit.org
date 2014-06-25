@@ -282,7 +282,7 @@ interested in the actual code implementing the starter kit.
 - Configuring this to use cask/pallet instead of the esk default
   package-initialize configuration.
   #+begin_src emacs-lisp
-    (require 'cask "/usr/local/Cellar/cask/0.6.0/cask.el")
+    (require 'cask "/usr/local/Cellar/cask/0.7.0/cask.el")
     (cask-initialize)
     (require 'pallet)
     
