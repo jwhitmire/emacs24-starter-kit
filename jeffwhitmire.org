@@ -49,23 +49,6 @@
    '(tab-width 2)
    '(track-eol t))
 
-  ;; iswitchb behavior
-  (iswitchb-mode 1)
-  (setq iswitchb-default-method 'samewindow)
-
-  (defadvice iswitchb-kill-buffer (after rescan-after-kill activate)
-    "*Regenerate the list of matching buffer names after a kill.
-  Necessary if using `uniquify` with `uniquify-after-kill-bufer-p`
-  set to non-nill."
-    (setq iswitchb-buflist iswitchb-matches)
-    (iswitchb-rescan))
-
-  (defun iswitchb-rescan ()
-    "*Regenerate the list of matching buffer names."
-    (interactive)
-    (iswitchb-make-buflist iswitchb-default)
-    (setq iswitchb-rescan t))
-
 
 #+END_SRC
 ** OSX Specific stuff
