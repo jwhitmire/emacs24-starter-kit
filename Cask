@@ -31,6 +31,7 @@
 (depends-on "git-commit-mode")
 (depends-on "gitignore-mode")
 (depends-on "git-rebase-mode")
+(depends-on "git-gutter-fringe")
 (depends-on "github-browse-file")
 (depends-on "haml-mode")
 (depends-on "highlight")
