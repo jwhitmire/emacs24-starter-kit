@@ -54,3 +54,5 @@ secret.org
 .*~
 agent/*
 .cask/
+
+/ido.last
